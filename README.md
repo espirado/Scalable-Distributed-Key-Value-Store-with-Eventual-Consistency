@@ -1,0 +1,2 @@
+# Scalable-Distributed-Key-Value-Store-with-Eventual-Consistency
+This project draws inspiration from Amazon’s Dynamo, focusing on building a highly available and scalable key-value store that achieves eventual consistency. It will help improve your SRE skills by integrating core principles such as decentralized architecture, failure handling, replication strategies, and operational monitoring into the system
