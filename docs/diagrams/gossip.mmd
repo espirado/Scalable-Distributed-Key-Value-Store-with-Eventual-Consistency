@@ -1,0 +1,7 @@
+graph TD
+    subgraph Gossip Communication
+        A[Node A] -->|Periodic Update| B[Node B]
+        B -->|Membership List| C[Node C]
+        C -->|Health Status| D[Node D]
+        D -->|Node States| A
+    end
