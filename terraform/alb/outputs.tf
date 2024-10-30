@@ -7,6 +7,16 @@ output "alb_arn" {
   description = "ARN of the load balancer"
   value       = aws_lb.kvstore.arn
 }
+output "alb_zone_id" {
+  description = "The zone_id of the load balancer"
+  value       = aws_lb.kvstore.zone_id
+}
+output "alb_arn_suffix" {
+  description = "ARN suffix of the load balancer"
+  value       = aws_lb.kvstore.arn_suffix
+}
+
+
 
 output "target_group_arn" {
   description = "ARN of the target group"
@@ -18,7 +28,7 @@ output "http_listener_arn" {
   value       = aws_lb_listener.http.arn
 }
 
-output "https_listener_arn" {
-  description = "ARN of the HTTPS listener"
-  value       = var.create_https_listener ? aws_lb_listener.https[0].arn : null
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the target group"
+  value       = aws_lb_target_group.kvstore.arn_suffix
 }

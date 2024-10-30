@@ -54,11 +54,11 @@ variable "public_subnet_cidrs" {
 variable "default_tags" {
   description = "Default tags for all resources"
   type        = map(string)
-  default = {
+  default     = {
     Environment = "dev"
     Project     = "kvstore"
     ManagedBy   = "terraform"
-    Region      = "us-east-1"
+    Owner       = "infrastructure-team"
   }
 }
 variable "kvstore_client_port" {
@@ -89,4 +89,15 @@ variable "certificate_arn" {
   description = "ARN of ACM certificate for HTTPS"
   type        = string
   default     = null
+}
+
+variable "domain_name" {
+  description = "Main domain name for the service"
+  type        = string
+}
+
+variable "grafana_admin_password" {
+  description = "Password for Grafana admin user"
+  type        = string
+  sensitive   = true
 }

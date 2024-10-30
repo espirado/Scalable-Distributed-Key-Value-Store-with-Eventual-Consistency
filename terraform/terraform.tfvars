@@ -40,3 +40,4 @@ kvstore_client_port = 8080
 kvstore_peer_port   = 7946
 kvstore_gossip_port = 7947
 create_https_listener = false  # Set to true if you want HTTPS
+domain_name = "kvstore.espiradev.org" 

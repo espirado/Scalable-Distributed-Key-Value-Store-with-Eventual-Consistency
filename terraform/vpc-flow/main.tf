@@ -90,7 +90,7 @@ resource "aws_flow_log" "main" {
 }
 
 # CloudWatch Metric Filter
-resource "aws_cloudwatch_metric_filter" "rejected_traffic" {
+resource "aws_cloudwatch_log_metric_filter" "rejected_traffic" {
   name           = "${local.name_prefix}-rejected-traffic"
   pattern        = "[version, account, eni, source, destination, srcport, destport, protocol, packets, bytes, windowstart, windowend, action=REJECT, flowlogstatus]"
   log_group_name = aws_cloudwatch_log_group.flow_logs.name

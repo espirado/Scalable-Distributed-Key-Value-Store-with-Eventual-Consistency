@@ -32,25 +32,6 @@ module "nat" {
   depends_on = [module.vpc]
 }
 
-module "alb" {
-  source = "./alb"
-
-  environment        = var.environment
-  project           = var.project_name
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.vpc.public_subnet_ids
-  
-  # Fix: Correctly specify security groups
-  security_group_ids = [module.security_groups.kvstore_lb_sg_id]
-  
-  kvstore_port         = var.kvstore_client_port
-  create_https_listener = var.create_https_listener
-  certificate_arn      = var.certificate_arn
-  
-  tags = var.default_tags
-
-  depends_on = [module.security_groups]
-}
 
 module "eks" {
   source = "./eks"
@@ -119,3 +100,124 @@ module "nacls" {
   depends_on = [module.vpc]
 }
 
+module "alb" {
+  source = "./alb"
+
+  environment        = var.environment
+  project           = var.project_name
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+  security_group_ids = [module.security_groups.kvstore_lb_sg_id]
+  kvstore_port      = var.kvstore_client_port
+
+  # Health check settings
+  health_check_path = "/health"
+  health_check_interval = 30
+  health_check_timeout = 5
+  health_check_healthy_threshold = 3
+  health_check_unhealthy_threshold = 3
+
+  # Enable deletion protection in production
+  enable_deletion_protection = var.environment == "prod"
+
+  tags = var.default_tags
+
+  depends_on = [module.vpc, module.security_groups]
+}
+
+module "vpc_endpoints" {
+  source = "./vpc_endpoints"
+
+  environment        = var.environment
+  project_name       = var.project_name
+  vpc_id            = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  route_table_ids    = concat(
+    [module.vpc.public_route_table_id],
+    module.vpc.private_route_table_ids
+  )
+  security_group_ids = [module.security_groups.kvstore_nodes_sg_id]
+
+  depends_on = [
+    module.vpc,
+    module.security_groups
+  ]
+}
+module "route53" {
+  source = "./route53"
+
+  environment     = var.environment
+  project_name    = var.project_name
+  domain_name     = var.domain_name
+  alb_dns_name    = module.alb.alb_dns_name
+  alb_zone_id     = module.alb.alb_zone_id
+  vpc_id          = module.vpc.vpc_id
+  
+  create_private_zone = true
+  tags              = var.default_tags
+
+  depends_on = [module.alb, module.vpc]
+}
+
+module "cloudwatch" {
+  source = "./cloudwatch"
+
+  environment            = var.environment
+  project_name           = var.project_name
+  alb_arn_suffix        = module.alb.alb_arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
+  cluster_name          = module.eks.cluster_id
+
+  depends_on = [
+    module.alb,
+    module.eks
+  ]
+}
+
+
+module "storage" {
+  source = "./storage"
+
+  environment = var.environment
+  project_name = var.project_name
+  
+  # Override defaults if needed
+  backup_retention_days = var.environment == "prod" ? 90 : 30
+  log_retention_days = var.environment == "prod" ? 365 : 90
+  
+  # Force destroy only in non-prod environments
+  bucket_force_destroy = var.environment != "prod"
+
+  depends_on = [module.eks]
+}
+
+module "logging" {
+  source = "./logging"
+
+  environment         = var.environment
+  project_name        = var.project_name
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  eks_cluster_name   = module.eks.cluster_id
+  eks_cluster_endpoint = module.eks.cluster_endpoint
+  domain_name        = var.domain_name
+
+  depends_on = [
+    module.vpc,
+    module.eks
+  ]
+}
+
+module "metrics" {
+  source = "./metrics"
+
+  environment           = var.environment
+  project_name         = var.project_name
+  vpc_id               = module.vpc.vpc_id
+  private_subnet_ids   = module.vpc.private_subnet_ids
+  grafana_admin_password = var.grafana_admin_password
+
+  depends_on = [
+    module.eks
+  ]
+}
