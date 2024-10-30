@@ -95,3 +95,9 @@ variable "domain_name" {
   description = "Main domain name for the service"
   type        = string
 }
+
+variable "grafana_admin_password" {
+  description = "Password for Grafana admin user"
+  type        = string
+  sensitive   = true
+}

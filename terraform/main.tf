@@ -190,3 +190,34 @@ module "storage" {
 
   depends_on = [module.eks]
 }
+
+module "logging" {
+  source = "./logging"
+
+  environment         = var.environment
+  project_name        = var.project_name
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  eks_cluster_name   = module.eks.cluster_id
+  eks_cluster_endpoint = module.eks.cluster_endpoint
+  domain_name        = var.domain_name
+
+  depends_on = [
+    module.vpc,
+    module.eks
+  ]
+}
+
+module "metrics" {
+  source = "./metrics"
+
+  environment           = var.environment
+  project_name         = var.project_name
+  vpc_id               = module.vpc.vpc_id
+  private_subnet_ids   = module.vpc.private_subnet_ids
+  grafana_admin_password = var.grafana_admin_password
+
+  depends_on = [
+    module.eks
+  ]
+}
