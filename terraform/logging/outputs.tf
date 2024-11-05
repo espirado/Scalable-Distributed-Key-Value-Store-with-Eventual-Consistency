@@ -3,9 +3,10 @@ output "opensearch_endpoint" {
   value       = aws_opensearch_domain.logging.endpoint
 }
 
-output "opensearch_kibana_endpoint" {
-  description = "OpenSearch Kibana endpoint"
-  value       = aws_opensearch_domain.logging.kibana_endpoint
+
+output "opensearch_dashboard_endpoint" {
+  description = "OpenSearch dashboard endpoint"
+  value       = aws_opensearch_domain.logging.dashboard_endpoint
 }
 
 output "fluentbit_namespace" {

@@ -1,3 +1,4 @@
+# General Configuration
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -15,6 +16,12 @@ variable "project_name" {
   default     = "kvstore"
 }
 
+variable "domain_name" {
+  description = "Main domain name for the service"
+  type        = string
+}
+
+# Network Configuration
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
@@ -51,16 +58,7 @@ variable "public_subnet_cidrs" {
   ]
 }
 
-variable "default_tags" {
-  description = "Default tags for all resources"
-  type        = map(string)
-  default     = {
-    Environment = "dev"
-    Project     = "kvstore"
-    ManagedBy   = "terraform"
-    Owner       = "infrastructure-team"
-  }
-}
+# Application Configuration
 variable "kvstore_client_port" {
   description = "Port for KV store client connections"
   type        = number
@@ -79,6 +77,7 @@ variable "kvstore_gossip_port" {
   default     = 7947
 }
 
+# Load Balancer Configuration
 variable "create_https_listener" {
   description = "Whether to create HTTPS listener"
   type        = bool
@@ -91,13 +90,27 @@ variable "certificate_arn" {
   default     = null
 }
 
-variable "domain_name" {
-  description = "Main domain name for the service"
-  type        = string
-}
-
+# Monitoring Configuration
 variable "grafana_admin_password" {
   description = "Password for Grafana admin user"
   type        = string
   sensitive   = true
+}
+
+variable "retention_days" {
+  description = "Number of days to retain metrics data"
+  type        = number
+  default     = 15
+}
+
+# Tagging
+variable "default_tags" {
+  description = "Default tags for all resources"
+  type        = map(string)
+  default     = {
+    Environment = "dev"
+    Project     = "kvstore"
+    ManagedBy   = "terraform"
+    Owner       = "infrastructure-team"
+  }
 }

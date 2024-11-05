@@ -188,17 +188,19 @@ resource "aws_s3_bucket_policy" "logs" {
 }
 
 # EBS Storage Class
-resource "aws_eks_storage_class" "gp3" {
-  name = "${local.name_prefix}-gp3"
+resource "kubernetes_storage_class" "gp3" {
+  metadata {
+    name = "${local.name_prefix}-gp3"
+    labels = local.common_tags
+  }
 
+  storage_provisioner = "ebs.csi.aws.com"
   parameters = {
-    type = "gp3"
+    type   = "gp3"
     fsType = "ext4"
   }
 
   reclaim_policy         = "Retain"
   volume_binding_mode    = "WaitForFirstConsumer"
   allow_volume_expansion = true
-
-  tags = local.common_tags
 }

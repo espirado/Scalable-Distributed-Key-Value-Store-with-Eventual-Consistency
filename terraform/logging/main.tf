@@ -2,6 +2,85 @@ locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
 
+# Create Namespace first
+resource "kubernetes_namespace" "logging" {
+  metadata {
+    name = "${var.project_name}-${var.environment}-logging"
+  }
+}
+
+# Create Service Account without annotations first
+resource "kubernetes_service_account" "fluentbit" {
+  metadata {
+    name      = "fluentbit"
+    namespace = kubernetes_namespace.logging.metadata[0].name
+  }
+}
+
+# Get EKS and OIDC provider information
+data "aws_eks_cluster" "this" {
+  name = var.eks_cluster_name
+}
+
+data "aws_iam_openid_connect_provider" "eks" {
+  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
+}
+
+# Create IAM policy first
+resource "aws_iam_policy" "fluentbit" {
+  name        = "${local.name_prefix}-fluentbit"
+  description = "IAM policy for Fluent Bit to access OpenSearch"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "es:ESHttp*"
+        ]
+        Resource = "${aws_opensearch_domain.logging.arn}/*"
+      }
+    ]
+  })
+}
+
+# Create IRSA role
+module "irsa_fluentbit" {
+  source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
+
+  role_name = "${local.name_prefix}-fluentbit"
+
+  role_policy_arns = {
+    fluentbit = aws_iam_policy.fluentbit.arn
+  }
+
+  oidc_providers = {
+    main = {
+      provider_arn               = data.aws_iam_openid_connect_provider.eks.arn
+      namespace_service_accounts = ["${kubernetes_namespace.logging.metadata[0].name}:fluentbit"]
+    }
+  }
+}
+
+# Update Service Account with annotation
+resource "kubernetes_annotations" "fluentbit_sa" {
+  api_version = "v1"
+  kind        = "ServiceAccount"
+  metadata {
+    name      = kubernetes_service_account.fluentbit.metadata[0].name
+    namespace = kubernetes_namespace.logging.metadata[0].name
+  }
+  annotations = {
+    "eks.amazonaws.com/role-arn" = module.irsa_fluentbit.iam_role_arn
+  }
+
+  depends_on = [
+    kubernetes_service_account.fluentbit,
+    module.irsa_fluentbit
+  ]
+}
+
 # OpenSearch Domain
 resource "aws_opensearch_domain" "logging" {
   domain_name    = "${local.name_prefix}-logs"
@@ -48,7 +127,7 @@ resource "aws_opensearch_domain" "logging" {
   }
 }
 
-# Security Group for OpenSearch
+# Security Groups
 resource "aws_security_group" "opensearch" {
   name        = "${local.name_prefix}-opensearch-sg"
   description = "Security group for OpenSearch domain"
@@ -68,7 +147,6 @@ resource "aws_security_group" "opensearch" {
   }
 }
 
-# Security Group for Fluent Bit
 resource "aws_security_group" "fluentbit" {
   name        = "${local.name_prefix}-fluentbit-sg"
   description = "Security group for Fluent Bit"
@@ -88,7 +166,7 @@ resource "aws_security_group" "fluentbit" {
   }
 }
 
-# Fluent Bit Configuration
+# Fluent Bit ConfigMap
 resource "kubernetes_config_map" "fluentbit_config" {
   metadata {
     name      = "fluentbit-config"
@@ -137,7 +215,9 @@ EOF
 }
 
 # Fluent Bit DaemonSet
-resource "kubernetes_daemon_set" "fluentbit" {
+resource "kubernetes_daemonset" "fluentbit" {
+  depends_on = [kubernetes_annotations.fluentbit_sa]
+
   metadata {
     name      = "fluentbit"
     namespace = kubernetes_namespace.logging.metadata[0].name
@@ -179,6 +259,16 @@ resource "kubernetes_daemon_set" "fluentbit" {
             mount_path = "/var/lib/docker/containers"
             read_only  = true
           }
+
+          resources {
+            limits = {
+              memory = "512Mi"
+            }
+            requests = {
+              cpu    = "100m"
+              memory = "128Mi"
+            }
+          }
         }
 
         volume {
@@ -201,61 +291,15 @@ resource "kubernetes_daemon_set" "fluentbit" {
             path = "/var/lib/docker/containers"
           }
         }
+
+        toleration {
+          key      = "node-role.kubernetes.io/master"
+          operator = "Exists"
+          effect   = "NoSchedule"
+        }
       }
     }
   }
-}
-
-# Create Namespace
-resource "kubernetes_namespace" "logging" {
-  metadata {
-    name = "${var.project_name}-${var.environment}-logging"
-  }
-}
-
-# Service Account for Fluent Bit
-resource "kubernetes_service_account" "fluentbit" {
-  metadata {
-    name      = "fluentbit"
-    namespace = kubernetes_namespace.logging.metadata[0].name
-  }
-}
-
-# IRSA for Fluent Bit
-module "irsa_fluentbit" {
-  source = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-
-  role_name = "${local.name_prefix}-fluentbit"
-
-  oidc_providers = {
-    main = {
-      provider_arn = var.eks_cluster_endpoint
-      namespace_service_accounts = ["${kubernetes_namespace.logging.metadata[0].name}:${kubernetes_service_account.fluentbit.metadata[0].name}"]
-    }
-  }
-
-  role_policy_arns = [
-    aws_iam_policy.fluentbit.arn
-  ]
-}
-
-# IAM Policy for Fluent Bit
-resource "aws_iam_policy" "fluentbit" {
-  name        = "${local.name_prefix}-fluentbit"
-  description = "IAM policy for Fluent Bit to access OpenSearch"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "es:ESHttp*"
-        ]
-        Resource = "${aws_opensearch_domain.logging.arn}/*"
-      }
-    ]
-  })
 }
 
 data "aws_region" "current" {}

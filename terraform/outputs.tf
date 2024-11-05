@@ -73,7 +73,7 @@ output "logging_endpoints" {
   description = "Logging infrastructure endpoints"
   value = {
     opensearch = module.logging.opensearch_endpoint
-    kibana     = module.logging.opensearch_kibana_endpoint
+    dashboard  = module.logging.opensearch_dashboard_endpoint
   }
 }
 

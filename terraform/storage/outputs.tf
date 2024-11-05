@@ -15,5 +15,5 @@ output "logs_bucket_name" {
 
 output "storage_class_name" {
   description = "Name of the EKS storage class"
-  value       = aws_eks_storage_class.gp3.name
+  value       = kubernetes_storage_class.gp3.metadata[0].name
 }

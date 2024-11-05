@@ -208,16 +208,38 @@ module "logging" {
   ]
 }
 
+data "aws_eks_cluster" "cluster" {
+  name = module.eks.cluster_id
+  depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = module.eks.cluster_id
+  depends_on = [module.eks]
+}
+
 module "metrics" {
   source = "./metrics"
 
-  environment           = var.environment
-  project_name         = var.project_name
-  vpc_id               = module.vpc.vpc_id
-  private_subnet_ids   = module.vpc.private_subnet_ids
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  project_name            = var.project_name
+  environment            = var.environment
+  retention_days         = var.retention_days
   grafana_admin_password = var.grafana_admin_password
 
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+
+  cluster_endpoint       = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = data.aws_eks_cluster.cluster.certificate_authority[0].data
+  cluster_name          = data.aws_eks_cluster.cluster.name
+
   depends_on = [
-    module.eks
+    module.eks,
+    module.vpc
   ]
 }

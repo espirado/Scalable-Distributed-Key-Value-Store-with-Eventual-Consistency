@@ -4,12 +4,12 @@ variable "environment" {
 }
 
 variable "project_name" {
-  description = "Project name"
+  description = "Name of the project"
   type        = string
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
+  description = "ID of the VPC"
   type        = string
 }
 
@@ -24,23 +24,23 @@ variable "eks_cluster_name" {
 }
 
 variable "eks_cluster_endpoint" {
-  description = "Endpoint of the EKS cluster"
+  description = "EKS cluster endpoint"
   type        = string
 }
 
 variable "domain_name" {
-  description = "Domain name for OpenSearch"
+  description = "Domain name for the environment"
   type        = string
 }
 
 variable "opensearch_instance_type" {
-  description = "OpenSearch instance type"
+  description = "Instance type for OpenSearch nodes"
   type        = string
-  default     = "t3.medium.search"
+  default     = "t3.small.search"
 }
 
 variable "opensearch_instance_count" {
-  description = "Number of OpenSearch instances"
+  description = "Number of OpenSearch nodes"
   type        = number
   default     = 2
 }
